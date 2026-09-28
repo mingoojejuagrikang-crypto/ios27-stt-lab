@@ -121,7 +121,7 @@
       const mySession = session;
       setTimeout(() => {
         if (!active || session !== mySession || r !== recognition) return;
-        if (ui.barge.checked) void startRecognition(false);
+        if (ui.barge.checked) void startRecognition(true);
         else if (phase === 'listening') void startRecognition(true);
       }, 250);
     };
