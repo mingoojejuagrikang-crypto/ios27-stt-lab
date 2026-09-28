@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" href="./icon-192.png">
   <title>iOS 27 STT↔TTS 실험</title>
   <style>
-    :root{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#152336;background:#f4f7fa}*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}main{max-width:720px;margin:auto;padding:20px 16px 32px}h1{font-size:22px;margin:0 0 16px}.panel{background:white;border:1px solid #d8e1e8;border-radius:16px;padding:16px;margin-bottom:14px}.setting{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #e8edf1;font-size:18px;font-weight:650}.setting:last-child{border:0}.setting small{display:block;font-size:12px;font-weight:400;color:#52647a;margin-top:4px}.setting input[type=checkbox]{appearance:none;width:58px;height:34px;border-radius:20px;background:#a5b1bd;position:relative;flex:none;margin:0}.setting input[type=checkbox]:checked{background:#1669a6}.setting input[type=checkbox]:after{content:"";position:absolute;width:26px;height:26px;top:4px;left:4px;border-radius:50%;background:#fff;transition:transform .15s}.setting input[type=checkbox]:checked:after{transform:translateX(24px)}.setting select{font-size:16px;padding:8px;max-width:176px;border-radius:8px;border:1px solid #9caebe;background:white}.setting :disabled{opacity:.5}.actions{display:flex;gap:10px}.actions button,.log-actions button{font-size:18px;font-weight:700;border:0;border-radius:12px;padding:13px 18px;background:#1769a4;color:#fff}.actions button:disabled{background:#b9c5ce}.actions #stop{background:#4b5865}.status{font-size:clamp(34px,9vw,56px);font-weight:800;color:#196b3b;margin:4px 0 12px}.status.speaking{color:#155eae}.status.ready{color:#536678}.status.stalled{color:#c0262d}.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stat{background:#f1f5f8;border-radius:10px;padding:12px}.stat strong{display:block;font-size:30px}.stat span{font-size:13px;color:#52647a}.last{overflow-wrap:anywhere;min-height:28px;font-size:22px;font-weight:650}.log-actions{display:flex;align-items:center;justify-content:space-between;gap:8px}.log-actions h2{font-size:18px;margin:0}.log-actions button{font-size:14px;padding:9px 11px}.log-actions #clear-log{background:#667582}#log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.45;list-style:none;padding:0;margin:12px 0 0;max-height:42vh;overflow:auto;overflow-wrap:anywhere}#log li{border-top:1px solid #e8edf1;padding:5px 0;white-space:pre-wrap}#log li.alert{color:#b00020;font-weight:700}
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#152336;background:#f4f7fa}*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}main{max-width:720px;margin:auto;padding:20px 16px 32px}h1{font-size:22px;margin:0 0 16px}.panel{background:white;border:1px solid #d8e1e8;border-radius:16px;padding:16px;margin-bottom:14px}.setting{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #e8edf1;font-size:18px;font-weight:650}.setting:last-child{border:0}.setting small{display:block;font-size:12px;font-weight:400;color:#52647a;margin-top:4px}.setting input[type=checkbox]{appearance:none;width:58px;height:34px;border-radius:20px;background:#a5b1bd;position:relative;flex:none;margin:0}.setting input[type=checkbox]:checked{background:#1669a6}.setting input[type=checkbox]:after{content:"";position:absolute;width:26px;height:26px;top:4px;left:4px;border-radius:50%;background:#fff;transition:transform .15s}.setting input[type=checkbox]:checked:after{transform:translateX(24px)}.setting select{font-size:16px;padding:8px;max-width:176px;border-radius:8px;border:1px solid #9caebe;background:white}.setting :disabled{opacity:.5}.vad-setting{display:block}.vad-setting input[type=range]{width:100%;margin:8px 0 0}.vad-setting output{font-size:13px;color:#52647a}.level{position:relative;height:16px;margin-top:12px;background:#e5ebf0;border-radius:8px;overflow:hidden}.level #vad-level{height:100%;width:0;background:#2f9860}.level.speaking #vad-level{background:#eb8d26}.level #vad-line{position:absolute;top:0;bottom:0;left:0;width:2px;background:#b52431}.actions{display:flex;gap:10px}.actions button,.log-actions button{font-size:18px;font-weight:700;border:0;border-radius:12px;padding:13px 18px;background:#1769a4;color:#fff}.actions button:disabled{background:#b9c5ce}.actions #stop{background:#4b5865}.status{font-size:clamp(34px,9vw,56px);font-weight:800;color:#196b3b;margin:4px 0 12px}.status.speaking{color:#155eae}.status.ready{color:#536678}.status.stalled{color:#c0262d}.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stat{background:#f1f5f8;border-radius:10px;padding:12px}.stat strong{display:block;font-size:30px}.stat span{font-size:13px;color:#52647a}.last{overflow-wrap:anywhere;min-height:28px;font-size:22px;font-weight:650}.log-actions{display:flex;align-items:center;justify-content:space-between;gap:8px}.log-actions h2{font-size:18px;margin:0}.log-actions button{font-size:14px;padding:9px 11px}.log-actions #clear-log{background:#667582}#log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.45;list-style:none;padding:0;margin:12px 0 0;max-height:42vh;overflow:auto;overflow-wrap:anywhere}#log li{border-top:1px solid #e8edf1;padding:5px 0;white-space:pre-wrap}#log li.alert{color:#b00020;font-weight:700}
   </style>
 </head>
 <body>
@@ -20,6 +20,8 @@
   <h1>STT ↔ TTS 반복 실험</h1>
   <section class="panel" aria-label="실험 설정">
     <label class="setting"><span>말끊기 <small>TTS 중 같은 인식기 유지</small></span><input id="barge" type="checkbox" role="switch"></label>
+    <label class="setting"><span>VAD 말끊기 <small>마이크 음량으로 발화를 감지해 인식기를 즉시 교체</small></span><input id="vad" type="checkbox" role="switch"></label>
+    <div class="setting vad-setting"><span>VAD 최소 임계값 <output id="vad-threshold-value"></output><small>시작 1초 소음 바닥의 3배와 이 값 중 큰 값 적용</small></span><input id="vad-threshold" type="range" min="0.005" max="0.100" step="0.005" value="0.035"></div>
     <label class="setting"><span>TTS 끝나면 새로 켜기 <small>말끊기 ON용 하이브리드 — TTS 중엔 듣고, 끝나면 인식기 교체</small></span><input id="refresh" type="checkbox" role="switch"></label>
     <label class="setting"><span>빠른 인식 <small>같은 숫자 interim 2회면 확정</small></span><input id="fast" type="checkbox" role="switch"></label>
     <label class="setting"><span>입력 가능 비프 <small>말끊기 OFF에서만 사용</small></span><select id="beep"><option value="off">끔</option><option value="after">onstart 후</option><option value="before">비프 먼저 → start</option></select></label>
@@ -27,6 +29,7 @@
   <section class="panel">
     <div class="actions"><button id="start">시작</button><button id="stop" disabled>정지</button></div>
     <div id="status" class="status ready" role="status" aria-live="polite">준비 중</div>
+    <div id="vad-meter" class="level" role="meter" aria-label="마이크 RMS" aria-valuemin="0" aria-valuemax="0.2" aria-valuenow="0"><div id="vad-level"></div><div id="vad-line"></div></div>
     <div class="stats"><div class="stat"><strong id="cycles">0</strong><span>완료 바퀴</span></div><div class="stat"><strong id="elapsed">—</strong><span>마지막 결과 뒤 경과초</span></div></div>
     <p>마지막 인식 텍스트</p><div id="last" class="last">—</div>
   </section>
@@ -39,7 +42,7 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const ui = { refresh:$('refresh'), barge:$('barge'), fast:$('fast'), beep:$('beep'), start:$('start'), stop:$('stop'), status:$('status'), cycles:$('cycles'), elapsed:$('elapsed'), last:$('last'), log:$('log') };
+  const ui = { refresh:$('refresh'), barge:$('barge'), vad:$('vad'), vadThreshold:$('vad-threshold'), vadThresholdValue:$('vad-threshold-value'), vadMeter:$('vad-meter'), vadLevel:$('vad-level'), vadLine:$('vad-line'), fast:$('fast'), beep:$('beep'), start:$('start'), stop:$('stop'), status:$('status'), cycles:$('cycles'), elapsed:$('elapsed'), last:$('last'), log:$('log') };
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let active = false, phase = 'ready', recognition = null, instanceNumber = 0;
   let recognitionStarted = false, recognitionStarting = false, expectedEnd = false, session = 0, utteranceId = 0;
@@ -48,6 +51,10 @@
   let ttsInterims = 0, bargeSuccesses = 0, echoes = 0, defers = 0;
   let ttsInterimSeen = false, ttsInterimRecognition = null, bargePending = false, deferredRefresh = null, deferTimer = null;
   let audioContext = null;
+  let vadStream = null, vadSource = null, vadAnalyser = null, vadTimer = null, vadTrack = null;
+  let vadStartAt = 0, vadNoiseSum = 0, vadNoiseCount = 0, vadNoiseFloor = 0, vadAboveSince = 0, vadRms = 0;
+  let vadFires = 0, vadFalsePositives = 0, vadTrackMutes = 0, vadTtsMax = 0;
+  let vadPending = null, vadStats = null, vadTrackState = '';
   const lines = [];
   const stamp = () => { const d = new Date(); return d.toLocaleTimeString('ko-KR', {hour12:false}) + '.' + String(d.getMilliseconds()).padStart(3,'0'); };
   const normalize = text => (text || '').toLocaleLowerCase('ko-KR').replace(/[\s\p{P}\p{S}]/gu,'');
@@ -74,24 +81,25 @@
   }
   function correctedNumber(raw) {
     const source = raw.trim();
-    // Arabic digits take priority when ordinary words contain numeral syllables.
-    const arabic = /\d(?:[\d\s]*\d)?(?:\s*(?:\.|점)\s*(?:\d(?:[\d\s]*\d)?|[영공일이삼사오육칠팔구](?:\s*[영공일이삼사오육칠팔구])*))?/u.exec(source);
-    if (arabic) {
-      const value = arabic[0].replace(/\s+/gu, '').replace('점', '.');
-      const clean = value.endsWith('.') ? value.slice(0, -1) : value;
+    const candidates = [];
+    const add = (value, index, arabic) => candidates.push({value, index, arabic, decimal:value.includes('.'), length:value.replace(/\D/gu, '').length});
+    // Collect every candidate; a later decimal must beat an earlier clock hour.
+    const arabicPattern = /\d(?:[\d\s]*\d)?(?:\s*(?:\.|점)\s*(?:\d(?:[\d\s]*\d)?|[영공일이삼사오육칠팔구](?:\s*[영공일이삼사오육칠팔구])*))?/gu;
+    for (const match of source.matchAll(arabicPattern)) {
+      const clean = match[0].replace(/\s+/gu, '').replace('점', '.').replace(/\.$/u, '');
       const [integer, fraction] = clean.split('.');
-      const result = fraction && /[영공일이삼사오육칠팔구]/u.test(fraction)
-        ? `${integer}.${[...fraction].map(ch => digits[ch]).join('')}` : clean;
-      return result;
+      add(fraction && /[영공일이삼사오육칠팔구]/u.test(fraction)
+        ? `${integer}.${[...fraction].map(ch => digits[ch]).join('')}` : clean, match.index, true);
     }
     const syllables = '영공일이삼사오육칠팔구십백천';
-    const pattern = new RegExp(`(?:^|[^가-힣])([${syllables}]+(?:\\s+[${syllables}]+)*(?:\\s*점\\s*[영공일이삼사오육칠팔구]+)?)(?=$|[^가-힣]|[은는이가을를에로와과도만])`, 'u');
-    const match = pattern.exec(source);
-    if (!match) return null;
-    const [whole, fraction] = match[1].split(/\s*점\s*/u);
-    const integer = koreanInteger(whole);
-    if (integer === null) return null;
-    return fraction ? `${integer}.${[...fraction].map(ch => digits[ch]).join('')}` : String(integer);
+    const pattern = new RegExp(`(?:^|[^가-힣])([${syllables}]+(?:\\s+[${syllables}]+)*(?:\\s*점\\s*[영공일이삼사오육칠팔구]+)?)(?=$|[^가-힣]|[은는이가을를에로와과도만])`, 'gu');
+    for (const match of source.matchAll(pattern)) {
+      const [whole, fraction] = match[1].split(/\s*점\s*/u);
+      const integer = koreanInteger(whole);
+      if (integer !== null) add(fraction ? `${integer}.${[...fraction].map(ch => digits[ch]).join('')}` : String(integer), match.index, false);
+    }
+    candidates.sort((a, b) => Number(b.decimal) - Number(a.decimal) || b.length - a.length || Number(b.arabic) - Number(a.arabic) || a.index - b.index);
+    return candidates[0]?.value ?? null;
   }
   window.__numTest = () => {
     const cases = [
@@ -99,7 +107,9 @@
       ['이백 십','210'], ['천 이백 삼십 사','1234'], ['삼십삼 점 삼','33.3'],
       ['33 점 3','33.3'], ['33점3','33.3'], ['저는 133.3','133.3'],
       ['집에 1','1'], ['33.4는','33.4'], ['11 점','11'], ['1 2 3','123'],
-      ['이십 일','21'], ['백 공','100'], ['숫자 없음',null], ['일상',null]
+      ['이십 일','21'], ['백 공','100'], ['1시 8.8','8.8'],
+      ['1시 88','88'], ['12와 3.5','3.5'], ['택시 백점을',null],
+      ['숫자 없음',null], ['일상',null]
     ];
     for (const [input, expected] of cases) {
       const actual = correctedNumber(input);
@@ -114,12 +124,94 @@
     ui.log.prepend(li);
   }
   function event(message) { lastEventAt = Date.now(); if (stalled) { stalled = false; render(); } log(message); }
+  const emptyVadStats = () => ({tts:{sum:0,count:0,max:0}, other:{sum:0,count:0,max:0}});
+  const rmsText = value => value.toFixed(4);
+  function vadThreshold() { return Math.max(Number(ui.vadThreshold.value), vadNoiseFloor * 3); }
+  function updateVadMeter() {
+    const scale = 0.2;
+    ui.vadLevel.style.width = `${Math.min(100, vadRms / scale * 100)}%`;
+    ui.vadLine.style.left = `${Math.min(100, vadThreshold() / scale * 100)}%`;
+    ui.vadMeter.setAttribute('aria-valuenow', String(vadRms.toFixed(4)));
+    ui.vadMeter.classList.toggle('speaking', phase === 'speaking');
+    ui.vadThresholdValue.textContent = `${Number(ui.vadThreshold.value).toFixed(3)} (적용 ${rmsText(vadThreshold())})`;
+  }
+  function flushVadStats(label) {
+    if (!vadStats) return;
+    const part = key => `${rmsText(vadStats[key].max)}/${rmsText(vadStats[key].count ? vadStats[key].sum / vadStats[key].count : 0)}`;
+    log(`VAD RMS ${label} TTS중 max/avg=${part('tts')} 비TTS중 max/avg=${part('other')}`);
+    vadStats = emptyVadStats();
+  }
+  function observeVadTrack() {
+    if (!vadTrack) return;
+    const state = `muted=${vadTrack.muted} readyState=${vadTrack.readyState}`;
+    if (state !== vadTrackState) { if (vadTrack.muted && !vadTrackState.includes('muted=true')) vadTrackMutes++; vadTrackState = state; log(`VAD 트랙 ${state}`); }
+  }
+  function closeVad() {
+    if (vadTimer) clearInterval(vadTimer);
+    vadTimer = null; vadAboveSince = 0;
+    if (vadSource) { try { vadSource.disconnect(); } catch {} vadSource = null; }
+    if (vadStream) { vadStream.getTracks().forEach(track => track.stop()); observeVadTrack(); vadStream = null; }
+    vadTrack = null; vadAnalyser = null; vadTrackState = ''; vadRms = 0; vadNoiseFloor = 0; updateVadMeter();
+  }
+  function fireVad() {
+    if (!active || phase !== 'speaking' || !ui.vad.checked || !ui.barge.checked || (vadPending && !vadPending.timedOut)) return;
+    const at = performance.now(); vadFires++;
+    log(`VAD-BARGE #${vadFires} RMS=${rmsText(vadRms)} 임계=${rmsText(vadThreshold())}`);
+    vadPending = {at, recognition:null, interimLogged:false, final:false, timedOut:false, timer:null};
+    const pending = vadPending;
+    pending.timer = setTimeout(() => {
+      if (!pending.final) { pending.timedOut = true; vadFalsePositives++; log(`VAD 오탐 #${vadFalsePositives} 발동 후 3초 내 final 없음`); }
+    }, 3000);
+    flushVadStats(`바퀴=${cycles + 1} VAD 발동`);
+    utteranceId++; window.speechSynthesis.cancel();
+    currentTtsText = ''; phase = 'listening'; bargePending = false; clearDefer(); render();
+    replaceRecognition('VAD-BARGE 즉시 인식기 교체');
+    pending.recognition = recognition;
+  }
+  function sampleVad() {
+    if (!active || !vadAnalyser || !vadTrack) return;
+    observeVadTrack();
+    const values = new Float32Array(vadAnalyser.fftSize);
+    vadAnalyser.getFloatTimeDomainData(values);
+    let power = 0; for (const value of values) power += value * value;
+    vadRms = Math.sqrt(power / values.length);
+    const now = performance.now();
+    if (now - vadStartAt < 1000) { vadNoiseSum += vadRms; vadNoiseCount++; }
+    else if (!vadNoiseFloor && vadNoiseCount) { vadNoiseFloor = vadNoiseSum / vadNoiseCount; log(`VAD 소음 바닥=${rmsText(vadNoiseFloor)} 적용 임계=${rmsText(vadThreshold())}`); }
+    const stat = vadStats[phase === 'speaking' ? 'tts' : 'other'];
+    stat.sum += vadRms; stat.count++; stat.max = Math.max(stat.max, vadRms);
+    if (phase === 'speaking') vadTtsMax = Math.max(vadTtsMax, vadRms);
+    updateVadMeter();
+    if (now - vadStartAt < 1000 || phase !== 'speaking' || vadTrack.muted || vadTrack.readyState !== 'live' || (vadPending && !vadPending.timedOut)) { vadAboveSince = 0; return; }
+    if (vadRms >= vadThreshold()) { if (!vadAboveSince) vadAboveSince = now; else if (now - vadAboveSince >= 150) { vadAboveSince = 0; fireVad(); } }
+    else vadAboveSince = 0;
+  }
+  async function openVad(mySession) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
+      if (!active || session !== mySession) { stream.getTracks().forEach(track => track.stop()); return; }
+      vadStream = stream; vadTrack = stream.getAudioTracks()[0];
+      vadTrackState = ''; observeVadTrack();
+      for (const name of ['mute','unmute','ended']) vadTrack.addEventListener(name, () => { if (active && session === mySession) { log(`VAD 트랙 이벤트 ${name}`); observeVadTrack(); } });
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      await audioContext.resume();
+      if (!active || session !== mySession) return;
+      vadSource = audioContext.createMediaStreamSource(stream);
+      vadAnalyser = audioContext.createAnalyser(); vadAnalyser.fftSize = 1024;
+      vadSource.connect(vadAnalyser);
+      vadStartAt = performance.now(); vadNoiseSum = 0; vadNoiseCount = 0; vadNoiseFloor = 0; vadAboveSince = 0;
+      log(`VAD 시작 fftSize=${vadAnalyser.fftSize} sampleRate=${audioContext.sampleRate} interval=20ms`);
+      vadTimer = setInterval(sampleVad, 20);
+    } catch (err) { if (active && session === mySession) { log(`VAD 마이크 오류 ${String(err)}`, true); closeVad(); } }
+  }
   function render() {
     ui.status.textContent = phase === 'listening' ? '듣는 중' : phase === 'speaking' ? '말하는 중' : '준비 중';
     ui.status.className = `status ${stalled ? 'stalled' : phase}`;
     ui.cycles.textContent = String(cycles);
     ui.start.disabled = active; ui.stop.disabled = !active;
-    ui.barge.disabled = active; ui.fast.disabled = active; ui.beep.disabled = active || ui.barge.checked;
+    ui.barge.disabled = active; ui.vad.disabled = active || !ui.barge.checked; ui.vadThreshold.disabled = !ui.barge.checked || !ui.vad.checked;
+    ui.fast.disabled = active; ui.beep.disabled = active || ui.barge.checked;
+    updateVadMeter();
   }
   function resetInterim() { lastInterim = ''; interimCount = 0; }
   function isEcho(text, spoken = currentTtsText) {
@@ -156,6 +248,7 @@
     r.onstart = () => {
       if (r !== recognition) return;
       recognitionStarted = true; recognitionStarting = false; event(`STT #${number} onstart`);
+      if (vadPending?.recognition === r) log(`VAD 발동→새 인식기 onstart=${Math.round(performance.now() - vadPending.at)}ms`);
       if (active && phase === 'listening' && !ui.barge.checked && ui.beep.value === 'after') void playBeep();
     };
     r.onresult = e => {
@@ -166,6 +259,10 @@
         const final = item.isFinal;
         const duringTts = phase === 'speaking';
         event(`STT #${number} onresult ${final ? 'final' : 'interim'}${duringTts ? ' (TTS중)' : ''} ${JSON.stringify(text)}`);
+        if (vadPending?.recognition === r) {
+          if (!final && !vadPending.interimLogged) { vadPending.interimLogged = true; log(`VAD 발동→첫 interim=${Math.round(performance.now() - vadPending.at)}ms`); }
+          if (final) { vadPending.final = true; clearTimeout(vadPending.timer); log(`VAD 발동→final=${Math.round(performance.now() - vadPending.at)}ms`); vadPending = null; }
+        }
         lastResultAt = Date.now();
         if (duringTts) {
           if (!final) { ttsInterims++; ttsInterimSeen = true; ttsInterimRecognition = r; }
@@ -279,6 +376,7 @@
     let started = false, finished = false;
     const finish = (how, natural = true) => {
       if (finished || !active || session !== mySession || id !== utteranceId) return;
+      if (ui.vad.checked && vadStats) flushVadStats(`바퀴=${cycles + 1}`);
       finished = true; event(how); cycles++; phase = 'listening'; currentTtsText = ''; render();
       if (natural && ui.barge.checked && ui.refresh.checked) {
         if (ttsInterimSeen && recognition === ttsInterimRecognition) {
@@ -305,10 +403,13 @@
   }
   function stopSession(reason = '사용자 정지') {
     if (!active) return;
+    if (ui.vad.checked && vadStats) flushVadStats(`바퀴=${cycles + 1} 정지`);
     active = false; session++; utteranceId++;
     clearDefer(); bargePending = false;
+    if (vadPending) { clearTimeout(vadPending.timer); if (!vadPending.timedOut) log('VAD 발동 대기 중 정지 — 오탐 판정 제외'); vadPending = null; }
     log(`SESSION 정지 ${reason}`);
-    log(`SUMMARY 바퀴=${cycles} TTS중_interim=${ttsInterims} BARGE성공=${bargeSuccesses} ECHO=${echoes} DEFER=${defers}`);
+    log(`SUMMARY 바퀴=${cycles} TTS중_interim=${ttsInterims} BARGE성공=${bargeSuccesses} ECHO=${echoes} DEFER=${defers} VAD발동=${vadFires} VAD오탐=${vadFalsePositives} 트랙mute=${vadTrackMutes} TTS중RMSmax=${rmsText(vadTtsMax)}`);
+    closeVad();
     if (recognition) { try { recognition.abort(); } catch {} recognition = null; }
     window.speechSynthesis?.cancel();
     phase = 'ready'; stalled = false; currentTtsText = ''; render();
@@ -319,11 +420,13 @@
     try { audioContext ||= new (window.AudioContext || window.webkitAudioContext)(); void audioContext.resume(); }
     catch (err) { log(`AudioContext 사용 불가 ${String(err)}`); }
     active = true; session++; cycles = 0; ttsInterims = 0; bargeSuccesses = 0; echoes = 0; defers = 0;
+    vadFires = 0; vadFalsePositives = 0; vadTrackMutes = 0; vadTtsMax = 0; vadStats = emptyVadStats(); vadPending = null;
     ttsInterimSeen = false; ttsInterimRecognition = null; bargePending = false; clearDefer();
     lastResultAt = 0; stalled = false; earlyAccepted = ''; earlyResultIndex = -1; resetInterim();
     ui.last.textContent = '—'; ui.elapsed.textContent = '—'; phase = 'listening'; render();
-    log(`SESSION 시작 barge=${ui.barge.checked} refresh=${ui.refresh.checked} fast=${ui.fast.checked} beep=${ui.barge.checked ? 'disabled' : ui.beep.value} audioSession=${navigator.audioSession?.type ?? 'unavailable'} standalone=${matchMedia('(display-mode: standalone)').matches} UA=${navigator.userAgent}`);
+    log(`SESSION 시작 barge=${ui.barge.checked} vad=${ui.vad.checked} vadMin=${ui.vadThreshold.value} refresh=${ui.refresh.checked} fast=${ui.fast.checked} beep=${ui.barge.checked ? 'disabled' : ui.beep.value} audioSession=${navigator.audioSession?.type ?? 'unavailable'} standalone=${matchMedia('(display-mode: standalone)').matches} UA=${navigator.userAgent}`);
     lastEventAt = Date.now();
+    if (ui.barge.checked && ui.vad.checked) void openVad(session);
     // iOS: speechSynthesis는 사용자 제스처 안의 첫 speak()로 풀린다 — 시작 탭에서 짧게 한 번 말한다.
     try {
       const warm = new SpeechSynthesisUtterance('시작'); warm.lang = 'ko-KR';
@@ -337,7 +440,9 @@
     } catch (err) { log(`TTS 워밍업 오류 ${String(err)}`, true); void startRecognition(true); }
   });
   ui.stop.addEventListener('click', () => stopSession());
-  ui.barge.addEventListener('change', render);
+  ui.barge.addEventListener('change', () => { if (!ui.barge.checked) ui.vad.checked = false; render(); });
+  ui.vad.addEventListener('change', render);
+  ui.vadThreshold.addEventListener('input', updateVadMeter);
   $('copy-log').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(lines.join('\n')); log('로그 복사 완료'); }
     catch (err) { log(`로그 복사 실패 ${String(err)}`, true); }
