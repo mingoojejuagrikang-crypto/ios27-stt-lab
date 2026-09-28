@@ -45,10 +45,67 @@
   let recognitionStarted = false, recognitionStarting = false, expectedEnd = false, session = 0, utteranceId = 0;
   let currentTtsText = '', cycles = 0, lastResultAt = 0, lastEventAt = 0, stalled = false;
   let lastInterim = '', interimCount = 0, earlyAccepted = '', earlyResultIndex = -1;
+  let ttsInterims = 0, bargeSuccesses = 0, echoes = 0, defers = 0;
+  let ttsInterimSeen = false, ttsInterimRecognition = null, bargePending = false, deferredRefresh = null, deferTimer = null;
   let audioContext = null;
   const lines = [];
   const stamp = () => { const d = new Date(); return d.toLocaleTimeString('ko-KR', {hour12:false}) + '.' + String(d.getMilliseconds()).padStart(3,'0'); };
   const normalize = text => (text || '').toLocaleLowerCase('ko-KR').replace(/[\s\p{P}\p{S}]/gu,'');
+  const digits = {영:0, 공:0, 일:1, 이:2, 삼:3, 사:4, 오:5, 육:6, 칠:7, 팔:8, 구:9};
+  const units = {십:10, 백:100, 천:1000};
+  function koreanInteger(raw) {
+    const value = raw.replace(/\s+/gu, '');
+    if (!value || /[^영공일이삼사오육칠팔구십백천]/u.test(value)) return null;
+    let total = 0, digit = null, lastUnit = 10000, usedUnit = false;
+    for (const char of value) {
+      if (char in units) {
+        const unit = units[char];
+        if (unit >= lastUnit) return null;
+        total += (digit ?? 1) * unit; digit = null; lastUnit = unit; usedUnit = true;
+      } else {
+        if (digit !== null) {
+          if (usedUnit) return null;
+          total = total * 10 + digit;
+        }
+        digit = digits[char];
+      }
+    }
+    return total + (digit ?? 0);
+  }
+  function correctedNumber(raw) {
+    const source = raw.trim();
+    // Arabic digits take priority when ordinary words contain numeral syllables.
+    const arabic = /\d(?:[\d\s]*\d)?(?:\s*(?:\.|점)\s*(?:\d(?:[\d\s]*\d)?|[영공일이삼사오육칠팔구](?:\s*[영공일이삼사오육칠팔구])*))?/u.exec(source);
+    if (arabic) {
+      const value = arabic[0].replace(/\s+/gu, '').replace('점', '.');
+      const clean = value.endsWith('.') ? value.slice(0, -1) : value;
+      const [integer, fraction] = clean.split('.');
+      const result = fraction && /[영공일이삼사오육칠팔구]/u.test(fraction)
+        ? `${integer}.${[...fraction].map(ch => digits[ch]).join('')}` : clean;
+      return result;
+    }
+    const syllables = '영공일이삼사오육칠팔구십백천';
+    const pattern = new RegExp(`(?:^|[^가-힣])([${syllables}]+(?:\\s+[${syllables}]+)*(?:\\s*점\\s*[영공일이삼사오육칠팔구]+)?)(?=$|[^가-힣]|[은는이가을를에로와과도만])`, 'u');
+    const match = pattern.exec(source);
+    if (!match) return null;
+    const [whole, fraction] = match[1].split(/\s*점\s*/u);
+    const integer = koreanInteger(whole);
+    if (integer === null) return null;
+    return fraction ? `${integer}.${[...fraction].map(ch => digits[ch]).join('')}` : String(integer);
+  }
+  window.__numTest = () => {
+    const cases = [
+      ['영','0'], ['공','0'], ['일','1'], ['구','9'], ['십','10'], ['십 일','11'],
+      ['이백 십','210'], ['천 이백 삼십 사','1234'], ['삼십삼 점 삼','33.3'],
+      ['33 점 3','33.3'], ['33점3','33.3'], ['저는 133.3','133.3'],
+      ['집에 1','1'], ['33.4는','33.4'], ['11 점','11'], ['1 2 3','123'],
+      ['이십 일','21'], ['백 공','100'], ['숫자 없음',null], ['일상',null]
+    ];
+    for (const [input, expected] of cases) {
+      const actual = correctedNumber(input);
+      console.log(`${actual === expected ? 'PASS' : 'FAIL'} ${JSON.stringify(input)} → ${JSON.stringify(actual)} (expected ${JSON.stringify(expected)})`);
+    }
+  };
   function log(message, alert = false) {
     const line = `${stamp()} ${message}`;
     lines.unshift(line);
@@ -65,6 +122,32 @@
     ui.barge.disabled = active; ui.fast.disabled = active; ui.beep.disabled = active || ui.barge.checked;
   }
   function resetInterim() { lastInterim = ''; interimCount = 0; }
+  function isEcho(text, spoken = currentTtsText) {
+    const heard = normalize(text), said = normalize(spoken);
+    return !heard || (said && said.includes(heard));
+  }
+  function recordEcho(number, text) { echoes++; log(`ECHO #${number} ${JSON.stringify(text)}`); }
+  function clearDefer() {
+    if (deferTimer) clearTimeout(deferTimer);
+    deferTimer = null;
+    const pending = deferredRefresh;
+    deferredRefresh = null;
+    return pending;
+  }
+  function replaceRecognition(message) {
+    if (!active) return;
+    if (recognition) { expectedEnd = true; try { recognition.abort(); } catch {} }
+    recognitionStarted = false; recognitionStarting = false;
+    event(message); void startRecognition(true);
+  }
+  function finishDeferredFinal(number, text) {
+    const pending = clearDefer();
+    if (!pending) return false;
+    if (isEcho(text, pending.ttsText)) recordEcho(number, text);
+    else acceptText(text);
+    replaceRecognition('HYBRID final 후 인식기 교체');
+    return true;
+  }
   function newRecognition() {
     const r = new Recognition();
     const number = ++instanceNumber;
@@ -81,22 +164,38 @@
         const item = e.results[i], text = item[0]?.transcript?.trim() || '';
         if (!text) continue;
         const final = item.isFinal;
-        event(`STT #${number} onresult ${final ? 'final' : 'interim'} ${JSON.stringify(text)}`);
+        const duringTts = phase === 'speaking';
+        event(`STT #${number} onresult ${final ? 'final' : 'interim'}${duringTts ? ' (TTS중)' : ''} ${JSON.stringify(text)}`);
         lastResultAt = Date.now();
-        if (phase === 'speaking') {
-          if (!final) continue;
-          const heard = normalize(text), spoken = normalize(currentTtsText);
-          if (!heard || (spoken && spoken.includes(heard))) { log(`ECHO #${number} ${JSON.stringify(text)}`); continue; }
+        if (duringTts) {
+          if (!final) { ttsInterims++; ttsInterimSeen = true; ttsInterimRecognition = r; }
+          else if (ttsInterimRecognition === r) ttsInterimSeen = false;
+          if (isEcho(text)) { recordEcho(number, text); continue; }
+          if (!ui.barge.checked) continue;
+          if (!final) {
+            if (!bargePending) {
+              log(`BARGE-INTERIM #${number} ${JSON.stringify(text)}`);
+              bargePending = true; utteranceId++; window.speechSynthesis.cancel();
+              currentTtsText = ''; phase = 'listening'; render();
+            }
+            continue;
+          }
           log(`BARGE #${number} ${JSON.stringify(text)}`);
-          utteranceId++; window.speechSynthesis.cancel();
-          acceptText(text); return;
+          bargeSuccesses++; utteranceId++; window.speechSynthesis.cancel();
+          bargePending = false; acceptText(text); return;
         }
         if (phase !== 'listening') continue;
         if (final) {
+          if (bargePending) {
+            bargePending = false; bargeSuccesses++;
+            log(`BARGE final #${number} ${JSON.stringify(text)}`);
+            acceptText(text); return;
+          }
+          if (finishDeferredFinal(number, text)) return;
           if (earlyAccepted && i === earlyResultIndex && normalize(text) === earlyAccepted) { log(`STT #${number} 중복 final 무시`); earlyAccepted = ''; earlyResultIndex = -1; continue; }
           earlyAccepted = ''; earlyResultIndex = -1; acceptText(text); return;
         }
-        if (!ui.fast.checked) continue;
+        if (!ui.fast.checked || deferredRefresh || bargePending) continue;
         const candidate = normalize(text);
         if (!/^\d+$/u.test(candidate)) { resetInterim(); continue; }
         interimCount = candidate === lastInterim ? interimCount + 1 : 1;
@@ -122,7 +221,7 @@
       const mySession = session;
       setTimeout(() => {
         if (!active || session !== mySession || r !== recognition) return;
-        if (ui.barge.checked) void startRecognition(true);
+        if (ui.barge.checked) void startRecognition(!bargePending && !deferredRefresh);
         else if (phase === 'listening') void startRecognition(true);
       }, 250);
     };
@@ -155,54 +254,61 @@
   function acceptText(text) {
     if (!active) return;
     resetInterim();
-    ui.last.textContent = text;
+    const corrected = correctedNumber(text);
+    const spoken = corrected ?? text;
+    ui.last.textContent = corrected === null ? text : `${text} → ${corrected}`;
+    log(`${corrected === null ? 'NUM?' : 'NUM'} 원문=${JSON.stringify(text)} 보정=${JSON.stringify(spoken)}`);
     lastResultAt = Date.now();
     if (!ui.barge.checked && recognition) {
       expectedEnd = true;
       try { recognition.abort(); } catch (err) { log(`STT #${instanceNumber} abort 오류 ${String(err)}`); }
     }
-    speak(text);
+    speak(spoken);
   }
   function speak(text) {
     const mySession = session, id = ++utteranceId;
-    currentTtsText = text;
+    currentTtsText = text; ttsInterimSeen = false; ttsInterimRecognition = null;
     phase = 'speaking'; render();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ko-KR';
-    utterance.onstart = () => { if (active && session === mySession && id === utteranceId) event(`TTS onstart ${JSON.stringify(text)}`); };
-    utterance.onend = () => {
-      if (!active || session !== mySession || id !== utteranceId) return;
-      event('TTS onend'); cycles++; phase = 'listening'; currentTtsText = ''; render();
-      if (!ui.barge.checked) void startRecognition(true);
-      else if (!recognitionStarted) void startRecognition(false);
-    };
     utterance.onerror = e => {
       if (!active || session !== mySession || id !== utteranceId) return;
       event(`TTS onerror(${e.error || 'unknown'})`);
       stopSession('TTS 오류');
     };
     let started = false, finished = false;
-    const finish = how => {
+    const finish = (how, natural = true) => {
       if (finished || !active || session !== mySession || id !== utteranceId) return;
       finished = true; event(how); cycles++; phase = 'listening'; currentTtsText = ''; render();
-      if (ui.barge.checked && ui.refresh.checked) {
-        if (recognition) { expectedEnd = true; try { recognition.abort(); } catch {} }
-        recognitionStarted = false; recognitionStarting = false;
-        event('HYBRID TTS 종료 → 인식기 교체'); void startRecognition(true); return;
+      if (natural && ui.barge.checked && ui.refresh.checked) {
+        if (ttsInterimSeen && recognition === ttsInterimRecognition) {
+          const pending = { recognition, ttsText: text, session: mySession };
+          deferredRefresh = pending; defers++;
+          event('HYBRID TTS 종료 → final 대기 (최대 5초)');
+          deferTimer = setTimeout(() => {
+            if (!active || session !== pending.session || deferredRefresh !== pending) return;
+            clearDefer(); log('DEFER-TIMEOUT');
+            replaceRecognition('HYBRID 유예 만료 → 인식기 교체');
+          }, 5000);
+          return;
+        }
+        replaceRecognition('HYBRID TTS 종료 → 인식기 교체'); return;
       }
       if (!ui.barge.checked) void startRecognition(true);
       else if (!recognitionStarted) void startRecognition(false);
     };
     utterance.onstart = () => { started = true; if (active && session === mySession && id === utteranceId) event(`TTS onstart ${JSON.stringify(text)}`); };
     utterance.onend = () => finish('TTS onend');
-    setTimeout(() => { if (!started) { log('TTS_NO_START 3초간 onstart 없음 — 다음 듣기로 진행', true); finish('TTS 워치독(시작 없음)'); } }, 3000);
+    setTimeout(() => { if (!started) { log('TTS_NO_START 3초간 onstart 없음 — 다음 듣기로 진행', true); finish('TTS 워치독(시작 없음)', false); } }, 3000);
     try { window.speechSynthesis.speak(utterance); event(`TTS speak() 호출 speaking=${speechSynthesis.speaking} pending=${speechSynthesis.pending}`); }
     catch (err) { event(`TTS speak 오류 ${String(err)}`); stopSession('TTS 오류'); }
   }
   function stopSession(reason = '사용자 정지') {
     if (!active) return;
     active = false; session++; utteranceId++;
+    clearDefer(); bargePending = false;
     log(`SESSION 정지 ${reason}`);
+    log(`SUMMARY 바퀴=${cycles} TTS중_interim=${ttsInterims} BARGE성공=${bargeSuccesses} ECHO=${echoes} DEFER=${defers}`);
     if (recognition) { try { recognition.abort(); } catch {} recognition = null; }
     window.speechSynthesis?.cancel();
     phase = 'ready'; stalled = false; currentTtsText = ''; render();
@@ -212,7 +318,9 @@
     if (!Recognition || !window.speechSynthesis || !window.SpeechSynthesisUtterance) { log('Web Speech API 미지원', true); return; }
     try { audioContext ||= new (window.AudioContext || window.webkitAudioContext)(); void audioContext.resume(); }
     catch (err) { log(`AudioContext 사용 불가 ${String(err)}`); }
-    active = true; session++; cycles = 0; lastResultAt = 0; stalled = false; earlyAccepted = ''; earlyResultIndex = -1; resetInterim();
+    active = true; session++; cycles = 0; ttsInterims = 0; bargeSuccesses = 0; echoes = 0; defers = 0;
+    ttsInterimSeen = false; ttsInterimRecognition = null; bargePending = false; clearDefer();
+    lastResultAt = 0; stalled = false; earlyAccepted = ''; earlyResultIndex = -1; resetInterim();
     ui.last.textContent = '—'; ui.elapsed.textContent = '—'; phase = 'listening'; render();
     log(`SESSION 시작 barge=${ui.barge.checked} refresh=${ui.refresh.checked} fast=${ui.fast.checked} beep=${ui.barge.checked ? 'disabled' : ui.beep.value} audioSession=${navigator.audioSession?.type ?? 'unavailable'} standalone=${matchMedia('(display-mode: standalone)').matches} UA=${navigator.userAgent}`);
     lastEventAt = Date.now();
