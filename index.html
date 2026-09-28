@@ -180,7 +180,17 @@
       event(`TTS onerror(${e.error || 'unknown'})`);
       stopSession('TTS 오류');
     };
-    try { window.speechSynthesis.speak(utterance); }
+    let started = false, finished = false;
+    const finish = how => {
+      if (finished || !active || session !== mySession || id !== utteranceId) return;
+      finished = true; event(how); cycles++; phase = 'listening'; currentTtsText = ''; render();
+      if (!ui.barge.checked) void startRecognition(true);
+      else if (!recognitionStarted) void startRecognition(false);
+    };
+    utterance.onstart = () => { started = true; if (active && session === mySession && id === utteranceId) event(`TTS onstart ${JSON.stringify(text)}`); };
+    utterance.onend = () => finish('TTS onend');
+    setTimeout(() => { if (!started) { log('TTS_NO_START 3초간 onstart 없음 — 다음 듣기로 진행', true); finish('TTS 워치독(시작 없음)'); } }, 3000);
+    try { window.speechSynthesis.speak(utterance); event(`TTS speak() 호출 speaking=${speechSynthesis.speaking} pending=${speechSynthesis.pending}`); }
     catch (err) { event(`TTS speak 오류 ${String(err)}`); stopSession('TTS 오류'); }
   }
   function stopSession(reason = '사용자 정지') {
@@ -200,7 +210,17 @@
     ui.last.textContent = '—'; ui.elapsed.textContent = '—'; phase = 'listening'; render();
     log(`SESSION 시작 barge=${ui.barge.checked} fast=${ui.fast.checked} beep=${ui.barge.checked ? 'disabled' : ui.beep.value} audioSession=${navigator.audioSession?.type ?? 'unavailable'} standalone=${matchMedia('(display-mode: standalone)').matches} UA=${navigator.userAgent}`);
     lastEventAt = Date.now();
-    void startRecognition(true);
+    // iOS: speechSynthesis는 사용자 제스처 안의 첫 speak()로 풀린다 — 시작 탭에서 짧게 한 번 말한다.
+    try {
+      const warm = new SpeechSynthesisUtterance('시작'); warm.lang = 'ko-KR';
+      const mySession = session;
+      warm.onstart = () => event('TTS 워밍업 onstart');
+      warm.onend = () => { event('TTS 워밍업 onend'); if (active && session === mySession) void startRecognition(true); };
+      warm.onerror = e => { event(`TTS 워밍업 onerror(${e.error || 'unknown'})`); if (active && session === mySession) void startRecognition(true); };
+      speechSynthesis.cancel(); speechSynthesis.speak(warm);
+      event(`TTS 워밍업 speak() voices=${speechSynthesis.getVoices().length} ko=${speechSynthesis.getVoices().filter(v => v.lang.startsWith('ko')).length}`);
+      setTimeout(() => { if (active && session === mySession && !recognition) { log('TTS 워밍업 무응답 3초 — 듣기 시작', true); void startRecognition(true); } }, 3000);
+    } catch (err) { log(`TTS 워밍업 오류 ${String(err)}`, true); void startRecognition(true); }
   });
   ui.stop.addEventListener('click', () => stopSession());
   ui.barge.addEventListener('change', render);
