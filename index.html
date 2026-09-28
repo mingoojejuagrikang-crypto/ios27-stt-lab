@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#123b61">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <title>iOS 27 STT↔TTS 실험</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#152336;background:#f4f7fa}*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}main{max-width:720px;margin:auto;padding:20px 16px 32px}h1{font-size:22px;margin:0 0 16px}.panel{background:white;border:1px solid #d8e1e8;border-radius:16px;padding:16px;margin-bottom:14px}.setting{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #e8edf1;font-size:18px;font-weight:650}.setting:last-child{border:0}.setting small{display:block;font-size:12px;font-weight:400;color:#52647a;margin-top:4px}.setting input[type=checkbox]{appearance:none;width:58px;height:34px;border-radius:20px;background:#a5b1bd;position:relative;flex:none;margin:0}.setting input[type=checkbox]:checked{background:#1669a6}.setting input[type=checkbox]:after{content:"";position:absolute;width:26px;height:26px;top:4px;left:4px;border-radius:50%;background:#fff;transition:transform .15s}.setting input[type=checkbox]:checked:after{transform:translateX(24px)}.setting select{font-size:16px;padding:8px;max-width:176px;border-radius:8px;border:1px solid #9caebe;background:white}.setting :disabled{opacity:.5}.actions{display:flex;gap:10px}.actions button,.log-actions button{font-size:18px;font-weight:700;border:0;border-radius:12px;padding:13px 18px;background:#1769a4;color:#fff}.actions button:disabled{background:#b9c5ce}.actions #stop{background:#4b5865}.status{font-size:clamp(34px,9vw,56px);font-weight:800;color:#196b3b;margin:4px 0 12px}.status.speaking{color:#155eae}.status.ready{color:#536678}.status.stalled{color:#c0262d}.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stat{background:#f1f5f8;border-radius:10px;padding:12px}.stat strong{display:block;font-size:30px}.stat span{font-size:13px;color:#52647a}.last{overflow-wrap:anywhere;min-height:28px;font-size:22px;font-weight:650}.log-actions{display:flex;align-items:center;justify-content:space-between;gap:8px}.log-actions h2{font-size:18px;margin:0}.log-actions button{font-size:14px;padding:9px 11px}.log-actions #clear-log{background:#667582}#log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.45;list-style:none;padding:0;margin:12px 0 0;max-height:42vh;overflow:auto;overflow-wrap:anywhere}#log li{border-top:1px solid #e8edf1;padding:5px 0;white-space:pre-wrap}#log li.alert{color:#b00020;font-weight:700}
+  </style>
+</head>
+<body>
+<main>
+  <h1>STT ↔ TTS 반복 실험</h1>
+  <section class="panel" aria-label="실험 설정">
+    <label class="setting"><span>말끊기 <small>TTS 중 같은 인식기 유지</small></span><input id="barge" type="checkbox" role="switch"></label>
+    <label class="setting"><span>빠른 인식 <small>같은 숫자 interim 2회면 확정</small></span><input id="fast" type="checkbox" role="switch"></label>
+    <label class="setting"><span>입력 가능 비프 <small>말끊기 OFF에서만 사용</small></span><select id="beep"><option value="off">끔</option><option value="after">onstart 후</option><option value="before">비프 먼저 → start</option></select></label>
+  </section>
+  <section class="panel">
+    <div class="actions"><button id="start">시작</button><button id="stop" disabled>정지</button></div>
+    <div id="status" class="status ready" role="status" aria-live="polite">준비 중</div>
+    <div class="stats"><div class="stat"><strong id="cycles">0</strong><span>완료 바퀴</span></div><div class="stat"><strong id="elapsed">—</strong><span>마지막 결과 뒤 경과초</span></div></div>
+    <p>마지막 인식 텍스트</p><div id="last" class="last">—</div>
+  </section>
+  <section class="panel">
+    <div class="log-actions"><h2>이벤트 로그</h2><div><button id="copy-log">로그 복사</button> <button id="clear-log">로그 지우기</button></div></div>
+    <ol id="log" aria-label="최신 이벤트부터"></ol>
+  </section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const ui = { barge:$('barge'), fast:$('fast'), beep:$('beep'), start:$('start'), stop:$('stop'), status:$('status'), cycles:$('cycles'), elapsed:$('elapsed'), last:$('last'), log:$('log') };
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let active = false, phase = 'ready', recognition = null, instanceNumber = 0;
+  let recognitionStarted = false, recognitionStarting = false, expectedEnd = false, session = 0, utteranceId = 0;
+  let currentTtsText = '', cycles = 0, lastResultAt = 0, lastEventAt = 0, stalled = false;
+  let lastInterim = '', interimCount = 0, earlyAccepted = '', earlyResultIndex = -1;
+  let audioContext = null;
+  const lines = [];
+  const stamp = () => { const d = new Date(); return d.toLocaleTimeString('ko-KR', {hour12:false}) + '.' + String(d.getMilliseconds()).padStart(3,'0'); };
+  const normalize = text => (text || '').toLocaleLowerCase('ko-KR').replace(/[\s\p{P}\p{S}]/gu,'');
+  function log(message, alert = false) {
+    const line = `${stamp()} ${message}`;
+    lines.unshift(line);
+    const li = document.createElement('li'); li.textContent = line;
+    if (alert) li.className = 'alert';
+    ui.log.prepend(li);
+  }
+  function event(message) { lastEventAt = Date.now(); if (stalled) { stalled = false; render(); } log(message); }
+  function render() {
+    ui.status.textContent = phase === 'listening' ? '듣는 중' : phase === 'speaking' ? '말하는 중' : '준비 중';
+    ui.status.className = `status ${stalled ? 'stalled' : phase}`;
+    ui.cycles.textContent = String(cycles);
+    ui.start.disabled = active; ui.stop.disabled = !active;
+    ui.barge.disabled = active; ui.fast.disabled = active; ui.beep.disabled = active || ui.barge.checked;
+  }
+  function resetInterim() { lastInterim = ''; interimCount = 0; }
+  function newRecognition() {
+    const r = new Recognition();
+    const number = ++instanceNumber;
+    r.lang = 'ko-KR'; r.continuous = true; r.interimResults = true;
+    recognition = r; recognitionStarted = false; recognitionStarting = false; expectedEnd = false;
+    r.onstart = () => {
+      if (r !== recognition) return;
+      recognitionStarted = true; recognitionStarting = false; event(`STT #${number} onstart`);
+      if (active && phase === 'listening' && !ui.barge.checked && ui.beep.value === 'after') void playBeep();
+    };
+    r.onresult = e => {
+      if (!active || r !== recognition) return;
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const item = e.results[i], text = item[0]?.transcript?.trim() || '';
+        if (!text) continue;
+        const final = item.isFinal;
+        event(`STT #${number} onresult ${final ? 'final' : 'interim'} ${JSON.stringify(text)}`);
+        lastResultAt = Date.now();
+        if (phase === 'speaking') {
+          if (!final) continue;
+          const heard = normalize(text), spoken = normalize(currentTtsText);
+          if (!heard || (spoken && spoken.includes(heard))) { log(`ECHO #${number} ${JSON.stringify(text)}`); continue; }
+          log(`BARGE #${number} ${JSON.stringify(text)}`);
+          utteranceId++; window.speechSynthesis.cancel();
+          acceptText(text); return;
+        }
+        if (phase !== 'listening') continue;
+        if (final) {
+          if (earlyAccepted && i === earlyResultIndex && normalize(text) === earlyAccepted) { log(`STT #${number} 중복 final 무시`); earlyAccepted = ''; earlyResultIndex = -1; continue; }
+          earlyAccepted = ''; earlyResultIndex = -1; acceptText(text); return;
+        }
+        if (!ui.fast.checked) continue;
+        const candidate = normalize(text);
+        if (!/^\d+$/u.test(candidate)) { resetInterim(); continue; }
+        interimCount = candidate === lastInterim ? interimCount + 1 : 1;
+        lastInterim = candidate;
+        if (interimCount >= 2) {
+          earlyAccepted = candidate;
+          earlyResultIndex = i;
+          log(`STT #${number} 빠른 인식 확정 ${JSON.stringify(text)}`);
+          acceptText(text); return;
+        }
+      }
+    };
+    r.onerror = e => {
+      if (r !== recognition) return;
+      event(`STT #${number} onerror(${e.error || 'unknown'})`);
+      if (['not-allowed','service-not-allowed','audio-capture'].includes(e.error)) stopSession('STT 사용 불가');
+    };
+    r.onend = () => {
+      if (r !== recognition) return;
+      recognitionStarted = false; recognitionStarting = false; event(`STT #${number} onend`);
+      if (expectedEnd) { expectedEnd = false; return; }
+      if (!active) return;
+      const mySession = session;
+      setTimeout(() => {
+        if (!active || session !== mySession || r !== recognition) return;
+        if (ui.barge.checked) void startRecognition(false);
+        else if (phase === 'listening') void startRecognition(true);
+      }, 250);
+    };
+    return r;
+  }
+  async function playBeep() {
+    if (!audioContext) { log('BEEP AudioContext 없음', true); return; }
+    try {
+      await audioContext.resume();
+      return await new Promise(resolve => {
+        const osc = audioContext.createOscillator(), gain = audioContext.createGain();
+        osc.frequency.value = 880; osc.type = 'sine'; gain.gain.value = 0.08;
+        osc.connect(gain); gain.connect(audioContext.destination);
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); resolve(); };
+        event('BEEP 880Hz 120ms'); osc.start(); osc.stop(audioContext.currentTime + 0.12);
+      });
+    } catch (err) { log(`BEEP 오류 ${String(err)}`, true); }
+  }
+  async function startRecognition(fresh) {
+    if (!active) return;
+    const mySession = session;
+    if (fresh || !recognition) newRecognition();
+    const r = recognition;
+    if (recognitionStarted || recognitionStarting) return;
+    recognitionStarting = true;
+    if (!ui.barge.checked && ui.beep.value === 'before') await playBeep();
+    if (!active || session !== mySession || r !== recognition) { recognitionStarting = false; return; }
+    try { r.start(); } catch (err) { recognitionStarting = false; event(`STT #${instanceNumber} start 오류 ${String(err)}`); }
+  }
+  function acceptText(text) {
+    if (!active) return;
+    resetInterim();
+    ui.last.textContent = text;
+    lastResultAt = Date.now();
+    if (!ui.barge.checked && recognition) {
+      expectedEnd = true;
+      try { recognition.abort(); } catch (err) { log(`STT #${instanceNumber} abort 오류 ${String(err)}`); }
+    }
+    speak(text);
+  }
+  function speak(text) {
+    const mySession = session, id = ++utteranceId;
+    currentTtsText = text;
+    phase = 'speaking'; render();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ko-KR';
+    utterance.onstart = () => { if (active && session === mySession && id === utteranceId) event(`TTS onstart ${JSON.stringify(text)}`); };
+    utterance.onend = () => {
+      if (!active || session !== mySession || id !== utteranceId) return;
+      event('TTS onend'); cycles++; phase = 'listening'; currentTtsText = ''; render();
+      if (!ui.barge.checked) void startRecognition(true);
+      else if (!recognitionStarted) void startRecognition(false);
+    };
+    utterance.onerror = e => {
+      if (!active || session !== mySession || id !== utteranceId) return;
+      event(`TTS onerror(${e.error || 'unknown'})`);
+      stopSession('TTS 오류');
+    };
+    try { window.speechSynthesis.speak(utterance); }
+    catch (err) { event(`TTS speak 오류 ${String(err)}`); stopSession('TTS 오류'); }
+  }
+  function stopSession(reason = '사용자 정지') {
+    if (!active) return;
+    active = false; session++; utteranceId++;
+    log(`SESSION 정지 ${reason}`);
+    if (recognition) { try { recognition.abort(); } catch {} recognition = null; }
+    window.speechSynthesis?.cancel();
+    phase = 'ready'; stalled = false; currentTtsText = ''; render();
+  }
+  ui.start.addEventListener('click', () => {
+    if (active) return;
+    if (!Recognition || !window.speechSynthesis || !window.SpeechSynthesisUtterance) { log('Web Speech API 미지원', true); return; }
+    try { audioContext ||= new (window.AudioContext || window.webkitAudioContext)(); void audioContext.resume(); }
+    catch (err) { log(`AudioContext 사용 불가 ${String(err)}`); }
+    active = true; session++; cycles = 0; lastResultAt = 0; stalled = false; earlyAccepted = ''; earlyResultIndex = -1; resetInterim();
+    ui.last.textContent = '—'; ui.elapsed.textContent = '—'; phase = 'listening'; render();
+    log(`SESSION 시작 barge=${ui.barge.checked} fast=${ui.fast.checked} beep=${ui.barge.checked ? 'disabled' : ui.beep.value} audioSession=${navigator.audioSession?.type ?? 'unavailable'} standalone=${matchMedia('(display-mode: standalone)').matches} UA=${navigator.userAgent}`);
+    lastEventAt = Date.now();
+    void startRecognition(true);
+  });
+  ui.stop.addEventListener('click', () => stopSession());
+  ui.barge.addEventListener('change', render);
+  $('copy-log').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(lines.join('\n')); log('로그 복사 완료'); }
+    catch (err) { log(`로그 복사 실패 ${String(err)}`, true); }
+  });
+  $('clear-log').addEventListener('click', () => { lines.length = 0; ui.log.replaceChildren(); });
+  setInterval(() => {
+    ui.elapsed.textContent = lastResultAt ? String(Math.floor((Date.now() - lastResultAt) / 1000)) : '—';
+    if (active && phase === 'listening' && !stalled && Date.now() - lastEventAt >= 15000) {
+      stalled = true; log('STALL 듣는 중 15초간 이벤트 없음', true); render();
+    }
+  }, 250);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(err => log(`SW 등록 오류 ${String(err)}`, true));
+  render();
+})();
+</script>
+</body>
+</html>
