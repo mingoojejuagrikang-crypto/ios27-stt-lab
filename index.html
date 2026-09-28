@@ -20,6 +20,7 @@
   <h1>STT ↔ TTS 반복 실험</h1>
   <section class="panel" aria-label="실험 설정">
     <label class="setting"><span>말끊기 <small>TTS 중 같은 인식기 유지</small></span><input id="barge" type="checkbox" role="switch"></label>
+    <label class="setting"><span>TTS 끝나면 새로 켜기 <small>말끊기 ON용 하이브리드 — TTS 중엔 듣고, 끝나면 인식기 교체</small></span><input id="refresh" type="checkbox" role="switch"></label>
     <label class="setting"><span>빠른 인식 <small>같은 숫자 interim 2회면 확정</small></span><input id="fast" type="checkbox" role="switch"></label>
     <label class="setting"><span>입력 가능 비프 <small>말끊기 OFF에서만 사용</small></span><select id="beep"><option value="off">끔</option><option value="after">onstart 후</option><option value="before">비프 먼저 → start</option></select></label>
   </section>
@@ -38,7 +39,7 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const ui = { barge:$('barge'), fast:$('fast'), beep:$('beep'), start:$('start'), stop:$('stop'), status:$('status'), cycles:$('cycles'), elapsed:$('elapsed'), last:$('last'), log:$('log') };
+  const ui = { refresh:$('refresh'), barge:$('barge'), fast:$('fast'), beep:$('beep'), start:$('start'), stop:$('stop'), status:$('status'), cycles:$('cycles'), elapsed:$('elapsed'), last:$('last'), log:$('log') };
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let active = false, phase = 'ready', recognition = null, instanceNumber = 0;
   let recognitionStarted = false, recognitionStarting = false, expectedEnd = false, session = 0, utteranceId = 0;
@@ -184,6 +185,11 @@
     const finish = how => {
       if (finished || !active || session !== mySession || id !== utteranceId) return;
       finished = true; event(how); cycles++; phase = 'listening'; currentTtsText = ''; render();
+      if (ui.barge.checked && ui.refresh.checked) {
+        if (recognition) { expectedEnd = true; try { recognition.abort(); } catch {} }
+        recognitionStarted = false; recognitionStarting = false;
+        event('HYBRID TTS 종료 → 인식기 교체'); void startRecognition(true); return;
+      }
       if (!ui.barge.checked) void startRecognition(true);
       else if (!recognitionStarted) void startRecognition(false);
     };
@@ -208,7 +214,7 @@
     catch (err) { log(`AudioContext 사용 불가 ${String(err)}`); }
     active = true; session++; cycles = 0; lastResultAt = 0; stalled = false; earlyAccepted = ''; earlyResultIndex = -1; resetInterim();
     ui.last.textContent = '—'; ui.elapsed.textContent = '—'; phase = 'listening'; render();
-    log(`SESSION 시작 barge=${ui.barge.checked} fast=${ui.fast.checked} beep=${ui.barge.checked ? 'disabled' : ui.beep.value} audioSession=${navigator.audioSession?.type ?? 'unavailable'} standalone=${matchMedia('(display-mode: standalone)').matches} UA=${navigator.userAgent}`);
+    log(`SESSION 시작 barge=${ui.barge.checked} refresh=${ui.refresh.checked} fast=${ui.fast.checked} beep=${ui.barge.checked ? 'disabled' : ui.beep.value} audioSession=${navigator.audioSession?.type ?? 'unavailable'} standalone=${matchMedia('(display-mode: standalone)').matches} UA=${navigator.userAgent}`);
     lastEventAt = Date.now();
     // iOS: speechSynthesis는 사용자 제스처 안의 첫 speak()로 풀린다 — 시작 탭에서 짧게 한 번 말한다.
     try {
